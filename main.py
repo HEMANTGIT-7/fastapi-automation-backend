@@ -24,12 +24,12 @@ USER_DATABASE = {
 }
 
 user_data_store = {
-    "12345": {"name": "Player_Alpha", "likes": 50},
-    "987654": {"name": "Player_Beta", "likes": 120},
-    "123456": {"name": "Player_Alpha", "likes": 54},
-    "987654": {"name": "Player_Beta", "likes": 125},
-    "123456": {"name": "Player_Alpha", "likes": 58},
-    "987654": {"name": "Player_Beta", "likes": 129},
+    "12345": {"name": "Player_Alpha", "lies": 50},
+    "987654": {"name": "Player_Beta", "lies": 120},
+    "123456": {"name": "Player_Alpa", "lies": 54},
+    "987654": {"name": "Player_eta", "lies": 125},
+    "123456": {"name": "Player_Aha", "les": 58},
+    "987654": {"name": "Player_Ba", "lies": 129},
 }
 
 class UserAuthRequest(BaseModel):
