@@ -1,6 +1,4 @@
-from fastapi import FastAPI, Form, HTTPException
-from fastapi.responses import HTMLResponse
-from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 app = FastAPI(
@@ -9,30 +7,29 @@ app = FastAPI(
     docs_url=None,
     redoc_url=None
 )
-@app.get("/")
-def home():
-    return {"status": "Online", "message": "FastAPI Server is Running Perfectly!"}
 
-# Multi-User Database (Aap alag-alag users ki ID aur Pass yahan add kar sakte hain)
+# Single source of truth for features
+feature_requests_store = []
+
+# Mutable multi-user database
 USER_DATABASE = {
     "HEMANT": "8877",
-    "HEMA": "123",
-    "md yaqoob": "123",
-    "hariom": "123",
-    
+    "HEMMAD": "HAMMAD@123",
+    "HEMANT1": "123",
+    "HARIOM": "123",
     "VIP_USER": "secure789"
 }
 
 user_data_store = {
-    "12345": {"name": "Player_Alpha", "lies": 50},
-    "987654": {"name": "Player_Beta", "lies": 120},
-    "123456": {"name": "Player_Alpa", "lies": 54},
-    "987654": {"name": "Player_eta", "lies": 125},
-    "123456": {"name": "Player_Aha", "les": 58},
-    "987654": {"name": "Player_Ba", "lies": 129},
+    "123456789": {"name": "Player_Alpha", "likes": 50},
+    "987654321": {"name": "Player_Beta", "likes": 120}
 }
 
 class UserAuthRequest(BaseModel):
+    username: str
+    password: str
+
+class RegisterRequest(BaseModel):
     username: str
     password: str
 
@@ -40,7 +37,22 @@ class LikeRequest(BaseModel):
     target_uid: str
     count: int
 
-# Dynamic User Verification Endpoint for EXE App
+class FeatureRequest(BaseModel):
+    username: str
+    feature_text: str
+
+@app.get("/")
+def home():
+    return {"status": "Online", "message": "FastAPI Server is Running Perfectly!"}
+
+# Optional: Add user registration endpoint so new users work dynamically
+@app.post("/register-user", tags=["🔑 Authentication System"])
+def register_user(data: RegisterRequest):
+    user = data.username.strip().upper()
+    pwd = data.password.strip()
+    USER_DATABASE[user] = pwd
+    return {"status": "success", "message": f"User {user} registered!"}
+
 @app.post("/verify-user", tags=["🔑 Authentication System"], summary="Validate EXE App User Credentials")
 def verify_user_credentials(auth: UserAuthRequest):
     user = auth.username.strip().upper()
@@ -51,7 +63,7 @@ def verify_user_credentials(auth: UserAuthRequest):
     else:
         raise HTTPException(status_code=401, detail="Invalid Username or Password!")
 
-@app.post("/add-likes", tags=["🚀 Automation Endpoints"], summary="Free Fire Mass Likes Pipeline")
+@app.post("/add-likes", tags=["🚀 Automation Endpoints"])
 def add_likes(data: LikeRequest):
     if data.target_uid not in user_data_store:
         user_data_store[data.target_uid] = {"name": f"User_{data.target_uid}", "likes": 0}
@@ -64,24 +76,18 @@ def add_likes(data: LikeRequest):
         "total_likes": user_data_store[data.target_uid]["likes"]
     }
 
-# User requests save karne ke liye dictionary / list
-feature_requests_store = []
-
-class FeatureRequest(BaseModel):
-    username: str
-    feature_text: str
-
-@app.post("/submit-feature", tags=["📝 Feature Requests"], summary="Receive Feature Ideas from Users")
+@app.post("/submit-feature", tags=["📝 Feature Requests"])
 def submit_feature(data: FeatureRequest):
-    req_entry = {"user": data.username, "request": data.feature_text}
+    req_entry = {"username": data.username, "feature_text": data.feature_text}
     feature_requests_store.append(req_entry)
-    
-    # Terminal me Print hoga jab bhi koi user request bhejega
     print(f"\n[NEW FEATURE REQUEST] From {data.username}: {data.feature_text}\n")
-    
     return {"status": "Success", "message": "Request Received!"}
 
-# Aap Browser me 'http://127.0.0.1:8000/get-features' khol kar sare requests dekh sakte hain
-@app.get("/get-features", tags=["📝 Feature Requests"], summary="View All Submitted Features")
+@app.get("/get-features", tags=["📝 Feature Requests"])
 def get_all_features():
-    return {"total_requests": len(feature_requests_store), "data": feature_requests_store}
+    return {"total_requests": len(feature_requests_store), "requests": feature_requests_store}
+
+@app.delete("/clear-features", tags=["📝 Feature Requests"])
+def clear_features():
+    feature_requests_store.clear()
+    return {"status": "cleared"}
