@@ -17,6 +17,9 @@ def home():
 USER_DATABASE = {
     "HEMANT": "8877",
     "HEMA": "123",
+    "md yaqoob": "y123",
+    "hario": "h123",
+    
     "VIP_USER": "secure789"
 }
 
