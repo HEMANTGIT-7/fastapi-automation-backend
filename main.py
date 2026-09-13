@@ -15,7 +15,7 @@ def home():
 
 # Multi-User Database (Aap alag-alag users ki ID aur Pass yahan add kar sakte hain)
 USER_DATABASE = {
-    "HEMANT": "123",
+    "HEMANT": "8877",
     "HEMA": "123",
     "VIP_USER": "secure789"
 }
