@@ -5,6 +5,7 @@ import webbrowser
 import os
 import subprocess
 import tkinter.messagebox as msgbox
+from phone_audit_window import PhoneAuditWindow
 
 # Theme Configuration
 ctk.set_appearance_mode("Dark")
@@ -121,14 +122,16 @@ class App(ctk.CTk):
         self.cleaner_var = ctk.BooleanVar(value=False)
         self.opt4_var = ctk.BooleanVar(value=False)
         self.opt5_var = ctk.BooleanVar(value=False)
+        self.phone_audit_var = ctk.BooleanVar(value=False)
 
-        switches = [
-            ("Option 1: START YOUTUBE", self.yt_var, self.on_youtube_toggle),
-            ("Option 2: START CHATGPT", self.opt2_var, self.on_chatgpt_toggle),
-            ("Option 3: RUN SUPER CLEANER", self.cleaner_var, self.on_cleaner_toggle),
-            ("Option 4: OPEN FREE MOVIE SITE", self.opt4_var, self.on_filmywap_toggle),
-            ("Option 5: Live Terminal Debug Logs", self.opt5_var, self.on_generic_toggle)
-        ]
+       switches = [
+    ("Option 1: START YOUTUBE", self.yt_var, self.on_youtube_toggle),
+    ("Option 2: START CHATGPT", self.opt2_var, self.on_chatgpt_toggle),
+    ("Option 3: RUN SUPER CLEANER", self.cleaner_var, self.on_cleaner_toggle),
+    ("Option 4: OPEN FREE MOVIE SITE", self.opt4_var, self.on_filmywap_toggle),
+    ("Option 5: Live Terminal Debug Logs", self.opt5_var, self.on_generic_toggle),
+    ("Option 6: 📱 PHONE NUMBER AUDIT", self.phone_audit_var, self.on_phone_audit_toggle)
+]
 
         switches_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
         switches_frame.pack(pady=5, padx=20, fill="x")
@@ -242,7 +245,16 @@ exit
             except Exception:
                 webbrowser.open("https://www.filmy4wap.tv.in/")
             threading.Thread(target=self.send_api_request, daemon=True).start()
-
+     
+   def on_phone_audit_toggle(self):
+    if self.phone_audit_var.get():
+        try:
+            PhoneAuditWindow(master=self)
+        except Exception as e:
+            msgbox.showerror("Error", f"Could not open audit window:\n{e}")
+        # Switch ko wapas off kar do
+        self.after(500, lambda: self.phone_audit_var.set(False))
+        
     def on_generic_toggle(self):
         threading.Thread(target=self.send_api_request, daemon=True).start()
 
