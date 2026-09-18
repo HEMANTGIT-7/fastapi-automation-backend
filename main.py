@@ -1,5 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+import phonenumbers
+from phonenumbers import geocoder, carrier, timezone
+from urllib.parse import quote_plus
+from datetime import datetime
 
 app = FastAPI(
     title="⚡ Secure API Portal",
@@ -91,3 +95,94 @@ def get_all_features():
 def clear_features():
     feature_requests_store.clear()
     return {"status": "cleared"}
+
+# ============================================================
+# PHONE AUDIT ENDPOINT
+# ============================================================
+
+class PhoneAuditRequest(BaseModel):
+    number: str
+    username: str = "anonymous"
+
+
+@app.post("/phone-audit", tags=["📱 Phone Audit"])
+async def phone_audit(data: PhoneAuditRequest):
+    number = data.number.strip()
+    
+    if not number.startswith("+"):
+        raise HTTPException(status_code=400, detail="Number must start with +")
+    
+    try:
+        parsed = phonenumbers.parse(number)
+        clean = number.replace("+", "").replace(" ", "").replace("-", "")
+        local = clean[2:] if clean.startswith("91") else clean
+        with_zero = "0" + local
+        
+        validation = {
+            "valid": phonenumbers.is_valid_number(parsed),
+            "country": geocoder.description_for_number(parsed, "en") or "Unknown",
+            "carrier": carrier.name_for_number(parsed, "en") or "Unknown",
+            "timezone": ", ".join(timezone.time_zones_for_number(parsed)) or "Unknown",
+            "e164": phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164),
+            "national": phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.NATIONAL),
+            "international": phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.INTERNATIONAL),
+            "line_type": str(phonenumbers.number_type(parsed)).replace("PhoneNumberType.", ""),
+        }
+        
+        dorks = []
+        dork_list = [
+            ("Exact +91", f'intext:"{number}"'),
+            ("Without +", f'intext:"{clean}"'),
+            ("Local", f'intext:"{local}"'),
+            ("With Zero", f'intext:"{with_zero}"'),
+            ("Phone Fraud", f'intitle:"Phone Fraud" intext:"{clean}"'),
+            ("Pastebin", f'site:pastebin.com "{clean}"'),
+            ("PDF Files", f'filetype:pdf "{clean}"'),
+            ("Word Files", f'filetype:doc OR filetype:docx "{clean}"'),
+            ("Excel Files", f'filetype:xls OR filetype:xlsx "{clean}"'),
+            ("GitHub", f'site:github.com "{clean}"'),
+            ("LinkedIn", f'site:linkedin.com "{clean}"'),
+            ("Facebook", f'site:facebook.com "{clean}"'),
+            ("Twitter", f'site:twitter.com "{clean}"'),
+            ("Instagram", f'site:instagram.com "{clean}"'),
+        ]
+        for name, dork in dork_list:
+            dorks.append({
+                "name": name,
+                "url": f"https://www.google.com/search?q={quote_plus(dork)}"
+            })
+        
+        return {
+            "status": "success",
+            "number": number,
+            "timestamp": datetime.now().isoformat(),
+            "username": data.username,
+            "validation": validation,
+            "dorks": dorks,
+            "social": {
+                "whatsapp": f"https://wa.me/{clean}",
+                "telegram": f"https://t.me/+{clean}",
+                "truecaller": f"https://www.truecaller.com/search/in/{clean}",
+            },
+            "breach": {
+                "hibp": "https://haveibeenpwned.com",
+                "firefox": "https://monitor.firefox.com",
+                "leakcheck": "https://leakcheck.io",
+            },
+            "spam": {
+                "truecaller": f"https://www.truecaller.com/search/in/{clean}",
+                "findwhocallsme": f"https://findwhocallsme.com/Phone-Number.aspx/{clean}",
+                "whocalledme": f"https://who-calledme.com/phone/{clean}",
+                "shouldianswer": f"https://www.shouldianswer.com/phone-number/{clean}",
+            },
+            "privacy_tips": [
+                "Number ko social media pe public mat rakho",
+                "Truecaller se opt-out karo",
+                "2FA lagao har account pe",
+                "Har 3 mahine mein audit karo",
+            ],
+            "legal_warning": "Yeh report sirf apne number ke liye hai. Kisi aur ka number audit karna IT Act 2000 ke under illegal hai."
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
