@@ -21,7 +21,7 @@ USER_DATABASE = {
     "HEMMAD": "HAMMAD@123",
     "HEMANT1": "123",
     "HARIOM": "123",
-    "md yaqoob": "9065",
+    "yaqoob": "9065",
     "VIP_USER": "secure789"
 }
 
@@ -46,6 +46,7 @@ class FeatureRequest(BaseModel):
     username: str
     feature_text: str
 
+    
 @app.get("/")
 def home():
     return {"status": "Online", "message": "FastAPI Server is Running Perfectly!"}
