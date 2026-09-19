@@ -21,6 +21,7 @@ USER_DATABASE = {
     "HEMMAD": "HAMMAD@123",
     "HEMANT1": "123",
     "HARIOM": "123",
+    "md yaqoob": "9065",
     "VIP_USER": "secure789"
 }
 
