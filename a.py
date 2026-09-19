@@ -18,7 +18,7 @@ class App(ctk.CTk):
         super().__init__()
 
         self.title("⚡ Secure Automation Portal")
-        self.geometry("450x680")  # Height adjustment for Text Box
+        self.geometry("450x680")
         self.resizable(False, False)
         self.logged_in_user = ""
 
@@ -124,10 +124,8 @@ class App(ctk.CTk):
         self.opt5_var = ctk.BooleanVar(value=False)
         self.phone_audit_var = ctk.BooleanVar(value=False)
 
-               self.phone_audit_var = ctk.BooleanVar(value=False)
-
-        switches = [                    # ← 8 spaces (class ke andar)
-            ("Option 1: START YOUTUBE", self.yt_var, self.on_youtube_toggle),      # ← 12 spaces
+        switches = [
+            ("Option 1: START YOUTUBE", self.yt_var, self.on_youtube_toggle),
             ("Option 2: START CHATGPT", self.opt2_var, self.on_chatgpt_toggle),
             ("Option 3: RUN SUPER CLEANER", self.cleaner_var, self.on_cleaner_toggle),
             ("Option 4: OPEN FREE MOVIE SITE", self.opt4_var, self.on_filmywap_toggle),
@@ -247,15 +245,15 @@ exit
             except Exception:
                 webbrowser.open("https://www.filmy4wap.tv.in/")
             threading.Thread(target=self.send_api_request, daemon=True).start()
-     
-     def on_phone_audit_toggle(self):    # ← 4 spaces
-        if self.phone_audit_var.get():  # ← 8 spaces
+
+    def on_phone_audit_toggle(self):
+        if self.phone_audit_var.get():
             try:
                 PhoneAuditWindow(master=self)
             except Exception as e:
                 msgbox.showerror("Error", f"Could not open audit window:\n{e}")
             self.after(500, lambda: self.phone_audit_var.set(False))
-        
+
     def on_generic_toggle(self):
         threading.Thread(target=self.send_api_request, daemon=True).start()
 
