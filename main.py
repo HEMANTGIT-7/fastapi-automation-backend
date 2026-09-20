@@ -18,7 +18,7 @@ feature_requests_store = []
 # Mutable multi-user database
 USER_DATABASE = {
     "HEMANT": "8877",
-    "HEMMAD": "123",
+    "HAMMAD": "123",
     "HEMANT1": "123",
     "HARIOM": "123",
     "YAQOOB": "9065",
