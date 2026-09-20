@@ -4,7 +4,7 @@ import phonenumbers
 from phonenumbers import geocoder, carrier, timezone
 from urllib.parse import quote_plus
 from datetime import datetime
-
+    
 app = FastAPI(
     title="⚡ Secure API Portal",
     version="1.0.0",
@@ -12,17 +12,26 @@ app = FastAPI(
     redoc_url=None
 )
 
-# Single source of truth for features
+# ============================================================
+# SINGLE SOURCE OF TRUTH FOR FEATURES
+# ============================================================
 feature_requests_store = []
 
-# Mutable multi-user database
+# ============================================================
+# ADMIN SECRET (HW ID authorize karne ke liye)
+# ============================================================
+ADMIN_SECRET = "Hemant@2025#Admin"   # 👈 Ise change karein
+
+# ============================================================
+# USER DATABASE (Naya Format: password + authorized_hw_ids)
+# ============================================================
 USER_DATABASE = {
-    "HEMANT": "8877",
-    "HAMMAD": "123",
-    "HEMANT1": "123",
-    "HARIOM": "123",
-    "YAQOOB": "9065",
-    "VIP_USER": "secure789"
+    "HEMANT":   {"password": "8877",      "authorized_hw_ids": []},
+    "HAMMAD":   {"password": "123",       "authorized_hw_ids": []},
+    "HEMANT1":  {"password": "123",       "authorized_hw_ids": []},
+    "HARIOM":   {"password": "123",       "authorized_hw_ids": []},
+    "YAQOOB":   {"password": "9065",      "authorized_hw_ids": []},
+    "VIP_USER": {"password": "secure789", "authorized_hw_ids": []},
 }
 
 user_data_store = {
@@ -30,13 +39,22 @@ user_data_store = {
     "987654321": {"name": "Player_Beta", "likes": 120}
 }
 
+# ============================================================
+# REQUEST MODELS
+# ============================================================
 class UserAuthRequest(BaseModel):
     username: str
     password: str
+    hw_id: str = None       # 👈 NAYA: HW ID optional
 
 class RegisterRequest(BaseModel):
     username: str
     password: str
+
+class AuthorizeRequest(BaseModel):
+    admin_password: str
+    username: str
+    hw_id: str
 
 class LikeRequest(BaseModel):
     target_uid: str
@@ -46,29 +64,133 @@ class FeatureRequest(BaseModel):
     username: str
     feature_text: str
 
-    
+class PhoneAuditRequest(BaseModel):
+    number: str
+    username: str = "anonymous"
+
+
+# ============================================================
+# ROOT ENDPOINT
+# ============================================================
 @app.get("/")
 def home():
     return {"status": "Online", "message": "FastAPI Server is Running Perfectly!"}
 
-# Optional: Add user registration endpoint so new users work dynamically
+
+# ============================================================
+# 🔑 AUTHENTICATION SYSTEM
+# ============================================================
 @app.post("/register-user", tags=["🔑 Authentication System"])
 def register_user(data: RegisterRequest):
     user = data.username.strip().upper()
     pwd = data.password.strip()
-    USER_DATABASE[user] = pwd
+    USER_DATABASE[user] = {"password": pwd, "authorized_hw_ids": []}
     return {"status": "success", "message": f"User {user} registered!"}
+
 
 @app.post("/verify-user", tags=["🔑 Authentication System"], summary="Validate EXE App User Credentials")
 def verify_user_credentials(auth: UserAuthRequest):
     user = auth.username.strip().upper()
     pwd = auth.password.strip()
+    hw_id = auth.hw_id.strip() if auth.hw_id else None
     
-    if user in USER_DATABASE and USER_DATABASE[user] == pwd:
-        return {"status": "success", "message": f"Welcome {user}!", "user": user}
-    else:
+    # User exist karta hai?
+    if user not in USER_DATABASE:
         raise HTTPException(status_code=401, detail="Invalid Username or Password!")
+    
+    user_data = USER_DATABASE[user]
+    
+    # Password check
+    if user_data["password"] != pwd:
+        raise HTTPException(status_code=401, detail="Invalid Username or Password!")
+    
+    # HW ID check
+    if hw_id:
+        authorized = user_data.get("authorized_hw_ids", [])
+        
+        if len(authorized) == 0:
+            # Pehli baar - auto register
+            user_data["authorized_hw_ids"] = [hw_id]
+            return {
+                "status": "success",
+                "hw_id_status": "first_time",
+                "hw_id": hw_id,
+                "message": f"Device registered! Welcome {user}!"
+            }
+        elif hw_id in authorized:
+            return {
+                "status": "success",
+                "hw_id_status": "authorized",
+                "message": f"Welcome back {user}!"
+            }
+        else:
+            return {
+                "status": "success",
+                "hw_id_status": "unauthorized",
+                "hw_id": hw_id,
+                "message": "Device not authorized"
+            }
+    
+    # Agar HW ID nahi bheja (backward compatibility)
+    return {"status": "success", "message": f"Welcome {user}!", "user": user}
 
+
+# ============================================================
+# 🔐 ADMIN: HW ID AUTHORIZE / DEAUTHORIZE
+# ============================================================
+@app.post("/authorize-device", tags=["🔐 Admin"])
+def authorize_device(req: AuthorizeRequest):
+    if req.admin_password != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Unauthorized admin!")
+    
+    user = req.username.strip().upper()
+    if user not in USER_DATABASE:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if "authorized_hw_ids" not in USER_DATABASE[user]:
+        USER_DATABASE[user]["authorized_hw_ids"] = []
+    
+    if req.hw_id not in USER_DATABASE[user]["authorized_hw_ids"]:
+        USER_DATABASE[user]["authorized_hw_ids"].append(req.hw_id)
+        return {"status": "success", "message": f"Device {req.hw_id} authorized for {user}"}
+    
+    return {"status": "info", "message": "Device already authorized"}
+
+
+@app.post("/deauthorize-device", tags=["🔐 Admin"])
+def deauthorize_device(req: AuthorizeRequest):
+    if req.admin_password != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Unauthorized admin!")
+    
+    user = req.username.strip().upper()
+    if user not in USER_DATABASE:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if req.hw_id in USER_DATABASE[user].get("authorized_hw_ids", []):
+        USER_DATABASE[user]["authorized_hw_ids"].remove(req.hw_id)
+        return {"status": "success", "message": "Device removed"}
+    
+    return {"status": "info", "message": "Device not found"}
+
+
+@app.get("/list-devices/{username}", tags=["🔐 Admin"])
+def list_devices(username: str, admin_password: str):
+    if admin_password != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Unauthorized admin!")
+    
+    user = username.strip().upper()
+    if user not in USER_DATABASE:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "username": user,
+        "authorized_hw_ids": USER_DATABASE[user].get("authorized_hw_ids", [])
+    }
+
+
+# ============================================================
+# 🚀 AUTOMATION ENDPOINTS
+# ============================================================
 @app.post("/add-likes", tags=["🚀 Automation Endpoints"])
 def add_likes(data: LikeRequest):
     if data.target_uid not in user_data_store:
@@ -82,6 +204,10 @@ def add_likes(data: LikeRequest):
         "total_likes": user_data_store[data.target_uid]["likes"]
     }
 
+
+# ============================================================
+# 📝 FEATURE REQUESTS
+# ============================================================
 @app.post("/submit-feature", tags=["📝 Feature Requests"])
 def submit_feature(data: FeatureRequest):
     req_entry = {"username": data.username, "feature_text": data.feature_text}
@@ -89,24 +215,21 @@ def submit_feature(data: FeatureRequest):
     print(f"\n[NEW FEATURE REQUEST] From {data.username}: {data.feature_text}\n")
     return {"status": "Success", "message": "Request Received!"}
 
+
 @app.get("/get-features", tags=["📝 Feature Requests"])
 def get_all_features():
     return {"total_requests": len(feature_requests_store), "requests": feature_requests_store}
+
 
 @app.delete("/clear-features", tags=["📝 Feature Requests"])
 def clear_features():
     feature_requests_store.clear()
     return {"status": "cleared"}
 
+
 # ============================================================
-# PHONE AUDIT ENDPOINT
+# 📱 PHONE AUDIT ENDPOINT
 # ============================================================
-
-class PhoneAuditRequest(BaseModel):
-    number: str
-    username: str = "anonymous"
-
-
 @app.post("/phone-audit", tags=["📱 Phone Audit"])
 async def phone_audit(data: PhoneAuditRequest):
     number = data.number.strip()
