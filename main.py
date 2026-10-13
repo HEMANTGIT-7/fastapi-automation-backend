@@ -32,6 +32,7 @@ USER_DATABASE = {
     "HARIOM":   {"password": "123",       "authorized_hw_ids": []},
     "YAQOOB":   {"password": "9065",      "authorized_hw_ids": []},
     "VIP_USER": {"password": "secure789", "authorized_hw_ids": []},
+    "GP": {"password": "1",               "authorized_hw_ids": []},
 }
 
 user_data_store = {
